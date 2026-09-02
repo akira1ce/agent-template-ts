@@ -35,7 +35,7 @@ export const INTENT_PROMPT = `你是出差准备 Agent 的意图识别节点，�
 
 **示例：**
 输入："我明天去上海出差，需要带什么？"
-输出：{ intent: "准备出差物品", goal: "生成出差清单", confidence: "高" }`;
+输出：{{ intent: "准备出差物品", goal: "生成出差清单", confidence: "高" }}`;
 
 /**
  * 信息抽取 Prompt
@@ -64,10 +64,10 @@ export const EXTRACT_PROMPT = `你是信息抽取节点，只记录明确的事�
 
 **示例：**
 输入："我明天去上海"
-输出：{ destination: "上海", duration: null, purpose: null, startDate: "明天" }
+输出：{{ destination: "上海", duration: null, purpose: null, startDate: "明天" }}
 
 输入："停留2天，主要开会"
-输出：{ destination: null, duration: 2, purpose: "开会", startDate: null }`;
+输出：{{ destination: null, duration: 2, purpose: "开会", startDate: null }}`;
 
 /**
  * 信息澄清 Prompt
@@ -107,15 +107,15 @@ export const CLARIFY_PROMPT = `你是信息澄清节点，判断信息是否完�
 - 如果所有必需信息都有了，readyToContinue 为 true
 
 **示例：**
-已提取：{ destination: "上海", duration: null, purpose: null, startDate: "明天" }
-输出：{
+已提取：{{ destination: "上海", duration: null, purpose: null, startDate: "明天" }}
+输出：{{
   askUserFor: ["duration", "purpose"],
   toolInformation: ["weather"],
   ignoredInformation: [],
   readyToContinue: false,
   nextQuestion: "请问您计划在上海停留几天？",
   reason: "缺少停留时长和出差目的，这些是生成清单的关键信息"
-}`;
+}}`;
 
 /**
  * 计划生成 Prompt
@@ -134,20 +134,20 @@ export const PLAN_PROMPT = `你是计划生成节点，根据信息制定行动�
 - 制定执行顺序
 
 输出格式：
-{
+{{
   tasks: string[],  // 任务列表
   toolsNeeded: string[],  // 需要的工具
   order: string[]  // 执行顺序
-}
+}}
 
 **示例：**
 意图：生成出差清单
-信息：{ destination: "上海", duration: 2, purpose: "技术交流", startDate: "明天" }
-输出：{
+信息：{{ destination: "上海", duration: 2, purpose: "技术交流", startDate: "明天" }}
+输出：{{
   tasks: ["查询天气", "准备衣物", "准备工作材料", "准备生活用品"],
   toolsNeeded: ["weather"],
   order: ["查询天气", "基于天气准备衣物", "基于目的准备材料", "准备生活用品"]
-}`;
+}}`;
 
 /**
  * 结果生成 Prompt
@@ -223,11 +223,11 @@ export const VALIDATE_PROMPT = `你是结果验证节点，检查生成的回复
 - 检查格式是否清晰
 
 输出格式：
-{
+{{
   isValid: boolean,
   issues: string[],  // 发现的问题
   suggestions: string[]  // 改进建议
-}
+}}
 
 **验证标准：**
 - 是否包含所有必需的类别（衣物、工作材料、生活用品等）
@@ -237,11 +237,11 @@ export const VALIDATE_PROMPT = `你是结果验证节点，检查生成的回复
 
 **示例：**
 如果回复完整且质量高：
-{ isValid: true, issues: [], suggestions: [] }
+{{ isValid: true, issues: [], suggestions: [] }}
 
 如果有问题：
-{
+{{
   isValid: false,
   issues: ["未考虑天气因素", "缺少工作材料类别"],
   suggestions: ["根据小雨天气增加雨具建议", "添加技术交流所需的材料清单"]
-}`;
+}}`;

@@ -59,12 +59,12 @@ async function _intentNode(
     LLMPresets.deepseek()
   );
 
-  const intent = await chain.invoke({ input: state.input! }, config);
+  const userIntent = await chain.invoke({ input: state.input! }, config);
 
-  return { intent };
+  return { userIntent };
 }
 
-export const intentNode = withLogging(_intentNode, "intent");
+export const intentNode = withLogging(_intentNode, "identify_intent");
 
 /**
  * 信息抽取节点
@@ -84,7 +84,7 @@ async function _extractNode(
   return { information };
 }
 
-export const extractNode = withLogging(_extractNode, "extract");
+export const extractNode = withLogging(_extractNode, "extract_info");
 
 /**
  * 信息澄清节点
@@ -100,7 +100,7 @@ async function _clarifyNode(
   );
 
   const contextInfo = `
-用户意图：${JSON.stringify(state.intent, null, 2)}
+用户意图：${JSON.stringify(state.userIntent, null, 2)}
 已提取信息：${JSON.stringify(state.information, null, 2)}
   `.trim();
 
@@ -109,7 +109,7 @@ async function _clarifyNode(
   return { informationGap };
 }
 
-export const clarifyNode = withLogging(_clarifyNode, "clarify");
+export const clarifyNode = withLogging(_clarifyNode, "check_gap");
 
 /**
  * 信息补全节点
@@ -146,7 +146,7 @@ async function _completeNode(
   );
 
   const contextInfo = `
-用户意图：${JSON.stringify(state.intent, null, 2)}
+用户意图：${JSON.stringify(state.userIntent, null, 2)}
 已提取信息：${JSON.stringify(mergedInfo, null, 2)}
   `.trim();
 
@@ -159,7 +159,7 @@ async function _completeNode(
   };
 }
 
-export const completeNode = withLogging(_completeNode, "complete");
+export const completeNode = withLogging(_completeNode, "complete_info");
 
 /**
  * 计划生成节点
@@ -175,7 +175,7 @@ async function _planNode(
   );
 
   const contextInfo = `
-用户意图：${JSON.stringify(state.intent, null, 2)}
+用户意图：${JSON.stringify(state.userIntent, null, 2)}
 完整信息：${JSON.stringify(state.information, null, 2)}
   `.trim();
 
@@ -184,7 +184,7 @@ async function _planNode(
   return { plan };
 }
 
-export const planNode = withLogging(_planNode, "plan");
+export const planNode = withLogging(_planNode, "make_plan");
 
 /**
  * 天气查询节点
@@ -202,7 +202,7 @@ async function _weatherNode(
   return { weather };
 }
 
-export const weatherNode = withLogging(_weatherNode, "weather");
+export const weatherNode = withLogging(_weatherNode, "query_weather");
 
 /**
  * 结果生成节点
@@ -220,7 +220,7 @@ async function _generateNode(
   const chain = prompt.pipe(llm);
 
   const contextInfo = `
-用户需求：${JSON.stringify(state.intent, null, 2)}
+用户需求：${JSON.stringify(state.userIntent, null, 2)}
 收集信息：${JSON.stringify(state.information, null, 2)}
 ${state.weather ? `天气情况：${JSON.stringify(state.weather, null, 2)}` : ""}
   `.trim();
@@ -231,7 +231,7 @@ ${state.weather ? `天气情况：${JSON.stringify(state.weather, null, 2)}` : "
   return { generatedReply };
 }
 
-export const generateNode = withLogging(_generateNode, "generate");
+export const generateNode = withLogging(_generateNode, "generate_reply");
 
 /**
  * 结果验证节点
@@ -250,7 +250,7 @@ async function _validateNode(
 生成的回复：
 ${state.generatedReply}
 
-用户原始需求：${JSON.stringify(state.intent, null, 2)}
+用户原始需求：${JSON.stringify(state.userIntent, null, 2)}
   `.trim();
 
   const validation = await chain.invoke({ input: contextInfo }, config);
@@ -258,7 +258,7 @@ ${state.generatedReply}
   return { validation };
 }
 
-export const validateNode = withLogging(_validateNode, "validate");
+export const validateNode = withLogging(_validateNode, "validate_reply");
 
 /**
  * 回复节点
@@ -274,7 +274,7 @@ async function _replyNode(
   };
 }
 
-export const replyNode = withLogging(_replyNode, "reply");
+export const replyNode = withLogging(_replyNode, "send_reply");
 
 /**
  * 条件判断：是否继续执行

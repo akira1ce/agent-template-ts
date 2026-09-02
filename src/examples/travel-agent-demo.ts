@@ -31,7 +31,7 @@ async function runSingleTurn() {
 
   console.log("\n" + "-".repeat(70));
   console.log("调试信息：");
-  console.log("- 意图:", JSON.stringify(result.intent, null, 2));
+  console.log("- 意图:", JSON.stringify(result.userIntent, null, 2));
   console.log("- 信息:", JSON.stringify(result.information, null, 2));
   console.log("- 天气:", JSON.stringify(result.weather, null, 2));
 }
@@ -56,7 +56,7 @@ async function runMultiTurn() {
 
   console.log("-".repeat(70));
   console.log("调试信息（首轮）：");
-  console.log("- 意图:", JSON.stringify(result1.intent, null, 2));
+  console.log("- 意图:", JSON.stringify(result1.userIntent, null, 2));
   console.log("- 已提取信息:", JSON.stringify(result1.information, null, 2));
   console.log("- 缺失信息:", result1.informationGap?.askUserFor);
   console.log("- 是否准备好:", result1.informationGap?.readyToContinue);

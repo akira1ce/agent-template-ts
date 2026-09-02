@@ -66,7 +66,7 @@ export const TravelStateAnnotation = Annotation.Root({
   /**
    * 意图识别结果
    */
-  intent: Annotation<Intent | null>({
+  userIntent: Annotation<Intent | null>({
     reducer: (prev, next) => next ?? prev,
     default: () => null,
   }),

@@ -28,11 +28,11 @@ import {
  * 创建 Travel Agent 图
  *
  * 执行流程：
- * 首轮：receive → intent → extract → clarify → [缺信息？wait : plan]
- *       → weather → generate → validate → reply → END
+ * 首轮：receive → identify_intent → extract_info → check_gap → [缺信息？wait : make_plan]
+ *       → query_weather → generate_reply → validate_reply → send_reply → END
  *
- * 补充轮：complete → [缺信息？wait : plan]
- *       → weather → generate → validate → reply → END
+ * 补充轮：receive → complete_info → [缺信息？wait : make_plan]
+ *       → query_weather → generate_reply → validate_reply → send_reply → END
  *
  * @returns 编译后的可执行图
  */
@@ -52,30 +52,47 @@ export function createTravelAgentGraph() {
   graph.addNode("validate_reply", validateNode);
   graph.addNode("send_reply", replyNode);
 
-  // 定义边 - 首轮流程
+  // 定义路由函数：判断是首轮还是补充轮
+  function routeAfterReceive(state: typeof TravelStateAnnotation.State): string {
+    // 如果有 latestUserSupplement，说明是补充轮
+    if (state.latestUserSupplement) {
+      return "complete_info";
+    }
+    // 否则是首轮
+    return "identify_intent";
+  }
+
+  // 定义边 - 入口点
   graph.setEntryPoint("receive");
-  graph.addEdge("receive", "identify_intent");
+
+  // 首轮 vs 补充轮的路由
+  graph.addConditionalEdges("receive", routeAfterReceive, {
+    identify_intent: "identify_intent",
+    complete_info: "complete_info",
+  });
+
+  // 首轮流程
   graph.addEdge("identify_intent", "extract_info");
   graph.addEdge("extract_info", "check_gap");
 
   // 条件分支 - 信息是否完整
-  graph.addConditionalEdges("clarify", shouldContinue, {
-    plan: "plan",
+  graph.addConditionalEdges("check_gap", shouldContinue, {
+    plan: "make_plan",
     wait: END,
   });
 
   // complete 节点也需要条件判断
-  graph.addConditionalEdges("complete", shouldContinue, {
-    plan: "plan",
+  graph.addConditionalEdges("complete_info", shouldContinue, {
+    plan: "make_plan",
     wait: END,
   });
 
   // 执行链 - 信息完整后的流程
-  graph.addEdge("plan", "weather");
-  graph.addEdge("weather", "generate");
-  graph.addEdge("generate", "validate");
-  graph.addEdge("validate", "reply");
-  graph.addEdge("reply", END);
+  graph.addEdge("make_plan", "query_weather");
+  graph.addEdge("query_weather", "generate_reply");
+  graph.addEdge("generate_reply", "validate_reply");
+  graph.addEdge("validate_reply", "send_reply");
+  graph.addEdge("send_reply", END);
 
   // 编译图
   return graph.compile();
