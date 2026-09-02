@@ -1,0 +1,37 @@
+{
+  "name": "agent-template-ts",
+  "version": "1.0.0",
+  "description": "Modular Agent Template with LangChain.js and LangGraph.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/examples/travel-agent-demo.ts",
+    "dev:multi-model": "tsx watch src/examples/multi-model-demo.ts",
+    "build": "tsc",
+    "start": "node dist/examples/travel-agent-demo.js",
+    "test": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "agent",
+    "langchain",
+    "langgraph",
+    "typescript",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/openai": "^0.3.0",
+    "langchain": "^0.3.0",
+    "@langchain/langgraph": "^0.2.0",
+    "zod": "^3.23.8",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.2"
+  }
+}
