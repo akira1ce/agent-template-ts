@@ -8,7 +8,7 @@
  * 4. 文档化的执行流程
  */
 
-import { StateGraph, END } from "@langchain/langgraph";
+import { StateGraph, START, END } from "@langchain/langgraph";
 import { TravelStateAnnotation } from "./state.js";
 import {
   receiveNode,
@@ -37,21 +37,6 @@ import {
  * @returns 编译后的可执行图
  */
 export function createTravelAgentGraph() {
-  // 创建状态图
-  const graph = new StateGraph(TravelStateAnnotation);
-
-  // 添加所有节点
-  graph.addNode("receive", receiveNode);
-  graph.addNode("identify_intent", intentNode);
-  graph.addNode("extract_info", extractNode);
-  graph.addNode("check_gap", clarifyNode);
-  graph.addNode("complete_info", completeNode);
-  graph.addNode("make_plan", planNode);
-  graph.addNode("query_weather", weatherNode);
-  graph.addNode("generate_reply", generateNode);
-  graph.addNode("validate_reply", validateNode);
-  graph.addNode("send_reply", replyNode);
-
   // 定义路由函数：判断是首轮还是补充轮
   function routeAfterReceive(state: typeof TravelStateAnnotation.State): string {
     // 如果有 latestUserSupplement，说明是补充轮
@@ -62,37 +47,44 @@ export function createTravelAgentGraph() {
     return "identify_intent";
   }
 
-  // 定义边 - 入口点
-  graph.setEntryPoint("receive");
-
-  // 首轮 vs 补充轮的路由
-  graph.addConditionalEdges("receive", routeAfterReceive, {
-    identify_intent: "identify_intent",
-    complete_info: "complete_info",
-  });
-
-  // 首轮流程
-  graph.addEdge("identify_intent", "extract_info");
-  graph.addEdge("extract_info", "check_gap");
-
-  // 条件分支 - 信息是否完整
-  graph.addConditionalEdges("check_gap", shouldContinue, {
-    plan: "make_plan",
-    wait: END,
-  });
-
-  // complete 节点也需要条件判断
-  graph.addConditionalEdges("complete_info", shouldContinue, {
-    plan: "make_plan",
-    wait: END,
-  });
-
-  // 执行链 - 信息完整后的流程
-  graph.addEdge("make_plan", "query_weather");
-  graph.addEdge("query_weather", "generate_reply");
-  graph.addEdge("generate_reply", "validate_reply");
-  graph.addEdge("validate_reply", "send_reply");
-  graph.addEdge("send_reply", END);
+  // 创建状态图并链式添加所有节点
+  const graph = new StateGraph(TravelStateAnnotation)
+    .addNode("receive", receiveNode)
+    .addNode("identify_intent", intentNode)
+    .addNode("extract_info", extractNode)
+    .addNode("check_gap", clarifyNode)
+    .addNode("complete_info", completeNode)
+    .addNode("make_plan", planNode)
+    .addNode("query_weather", weatherNode)
+    .addNode("generate_reply", generateNode)
+    .addNode("validate_reply", validateNode)
+    .addNode("send_reply", replyNode)
+    // 定义边 - 入口点：START 连接到 receive
+    .addEdge(START, "receive")
+    // 首轮 vs 补充轮的路由
+    .addConditionalEdges("receive", routeAfterReceive, {
+      identify_intent: "identify_intent",
+      complete_info: "complete_info",
+    })
+    // 首轮流程
+    .addEdge("identify_intent", "extract_info")
+    .addEdge("extract_info", "check_gap")
+    // 条件分支 - 信息是否完整
+    .addConditionalEdges("check_gap", shouldContinue, {
+      plan: "make_plan",
+      wait: END,
+    })
+    // complete 节点也需要条件判断
+    .addConditionalEdges("complete_info", shouldContinue, {
+      plan: "make_plan",
+      wait: END,
+    })
+    // 执行链 - 信息完整后的流程
+    .addEdge("make_plan", "query_weather")
+    .addEdge("query_weather", "generate_reply")
+    .addEdge("generate_reply", "validate_reply")
+    .addEdge("validate_reply", "send_reply")
+    .addEdge("send_reply", END);
 
   // 编译图
   return graph.compile();
