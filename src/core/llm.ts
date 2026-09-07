@@ -87,7 +87,7 @@ export function createLLM(config: LLMConfig): ChatOpenAI {
   if (!apiKey) {
     throw new Error(
       `API Key not found for provider: ${config.provider}. ` +
-      `Please set ${config.provider.toUpperCase()}_API_KEY in environment variables.`
+        `Please set ${config.provider.toUpperCase()}_API_KEY in environment variables.`,
     );
   }
 
@@ -168,7 +168,7 @@ export const LLMPresets = {
 export function createStructuredChain<T extends z.ZodTypeAny>(
   systemPrompt: string,
   schema: T,
-  config: LLMConfig
+  config: LLMConfig,
 ) {
   const prompt = ChatPromptTemplate.fromMessages([
     ["system", systemPrompt],
@@ -190,10 +190,7 @@ export function createStructuredChain<T extends z.ZodTypeAny>(
  * @param config - LLM 配置
  * @returns Runnable Chain
  */
-export function createTextChain(
-  systemPrompt: string,
-  config: LLMConfig
-) {
+export function createTextChain(systemPrompt: string, config: LLMConfig) {
   const prompt = ChatPromptTemplate.fromMessages([
     ["system", systemPrompt],
     ["human", "{input}"],

@@ -15,7 +15,7 @@ import type { RunnableConfig } from "@langchain/core/runnables";
  * 用于多轮对话场景，根据 informationGap 判断是否需要暂停等待用户输入
  */
 export function createContinueRouter<
-  TState extends { informationGap?: { readyToContinue?: boolean } }
+  TState extends { informationGap?: { readyToContinue?: boolean } },
 >(continueNode: string, waitNode: string = END) {
   return (state: TState): typeof continueNode | typeof waitNode => {
     if (state.informationGap?.readyToContinue) {
@@ -29,7 +29,7 @@ export function createContinueRouter<
  * 图配置：启用 LangSmith 追踪
  */
 export function createTracingConfig(
-  metadata?: Record<string, any>
+  metadata?: Record<string, any>,
 ): RunnableConfig {
   return {
     metadata: {

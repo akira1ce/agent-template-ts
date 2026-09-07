@@ -74,7 +74,7 @@ export function createReadyGap(): InformationGap {
  */
 export function createGapWithQuestion(
   askUserFor: string[],
-  question?: string
+  question?: string,
 ): InformationGap {
   const defaultQuestion = question || `请补充一下：${askUserFor[0]}？`;
 

@@ -24,7 +24,7 @@ async function exampleModels() {
     const openaiChain = createStructuredChain(
       "你是意图识别助手",
       IntentSchema,
-      LLMPresets.openai()
+      LLMPresets.openai(),
     );
     const openaiResult = await openaiChain.invoke({ input: userInput });
     console.log(JSON.stringify(openaiResult, null, 2));
@@ -38,7 +38,7 @@ async function exampleModels() {
     const deepseekChain = createStructuredChain(
       "你是意图识别助手",
       IntentSchema,
-      LLMPresets.deepseek()
+      LLMPresets.deepseek(),
     );
     const deepseekResult = await deepseekChain.invoke({ input: userInput });
     console.log(JSON.stringify(deepseekResult, null, 2));
@@ -73,7 +73,7 @@ async function exampleCustomConfig() {
         modelName: "deepseek-chat",
         temperature: 0.0,
         maxTokens: 2048,
-      }
+      },
     );
     const result1 = await chain1.invoke({ input: userInput });
     console.log(`回答: ${result1.answer.substring(0, 100)}...`);
@@ -92,7 +92,7 @@ async function exampleCustomConfig() {
         modelName: "deepseek-chat",
         temperature: 0.8,
         maxTokens: 2048,
-      }
+      },
     );
     const result2 = await chain2.invoke({ input: userInput });
     console.log(`回答: ${result2.answer.substring(0, 100)}...`);
@@ -121,7 +121,7 @@ async function exampleCoder() {
     const chain = createStructuredChain(
       "你是代码生成助手，生成简洁高效的代码",
       CodeSchema,
-      LLMPresets.deepseek_coder()
+      LLMPresets.deepseek_coder(),
     );
 
     const result = await chain.invoke({ input: userInput });

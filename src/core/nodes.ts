@@ -15,7 +15,7 @@ import { RunnableConfig } from "@langchain/core/runnables";
  */
 export type NodeFunction<TState> = (
   state: TState,
-  config?: RunnableConfig
+  config?: RunnableConfig,
 ) => Promise<Partial<TState>>;
 
 /**
@@ -30,10 +30,11 @@ export interface NodeMetadata {
 
 /**
  * 装饰器：为节点添加日志
+ * @deprecated 使用新的插件系统: AgentRuntime + LoggerPlugin
  */
 export function withLogging<TState>(
   func: NodeFunction<TState>,
-  nodeName: string
+  nodeName: string,
 ): NodeFunction<TState> {
   return async (state: TState, config?: RunnableConfig) => {
     console.log(`\n[节点开始] ${nodeName}`);
@@ -58,17 +59,17 @@ export function withLogging<TState>(
  */
 export function validateStateKeys<TState extends Record<string, any>>(
   requiredKeys: (keyof TState)[],
-  nodeName: string
+  nodeName: string,
 ) {
   return (func: NodeFunction<TState>): NodeFunction<TState> => {
     return async (state: TState, config?: RunnableConfig) => {
       const missingKeys = requiredKeys.filter(
-        (key) => state[key] === undefined || state[key] === null
+        (key) => state[key] === undefined || state[key] === null,
       );
 
       if (missingKeys.length > 0) {
         throw new Error(
-          `节点 ${nodeName} 缺少必需的状态键: ${missingKeys.join(", ")}`
+          `节点 ${nodeName} 缺少必需的状态键: ${missingKeys.join(", ")}`,
         );
       }
 
@@ -79,11 +80,12 @@ export function validateStateKeys<TState extends Record<string, any>>(
 
 /**
  * 装饰器：添加重试机制
+ * @deprecated 使用新的插件系统: AgentRuntime + RetryPlugin
  */
 export function withRetry<TState>(
   func: NodeFunction<TState>,
   maxRetries = 3,
-  delay = 1000
+  delay = 1000,
 ): NodeFunction<TState> {
   return async (state: TState, config?: RunnableConfig) => {
     let lastError: Error | undefined;
@@ -109,7 +111,7 @@ export function withRetry<TState>(
  */
 export function createRouter<TState>(
   conditionFunc: (state: TState) => string,
-  nodeName?: string
+  nodeName?: string,
 ): (state: TState) => string {
   return (state: TState) => {
     const result = conditionFunc(state);
@@ -126,7 +128,7 @@ export function createRouter<TState>(
 export function safeGet<T>(
   state: Record<string, any>,
   key: string,
-  defaultValue?: T
+  defaultValue?: T,
 ): T | undefined {
   return state[key] ?? defaultValue;
 }

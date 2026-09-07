@@ -53,15 +53,16 @@ export const queryWeatherTool = tool(
     // 模拟 API 延迟
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const result =
-      weatherData[destination] || {
-        destination,
-        condition: "未知",
-        temperature: "未知",
-        advice: "请关注当地天气预报",
-      };
+    const result = weatherData[destination] || {
+      destination,
+      condition: "未知",
+      temperature: "未知",
+      advice: "请关注当地天气预报",
+    };
 
-    console.log(`[工具结果] ${destination}: ${result.condition}, ${result.temperature}`);
+    console.log(
+      `[工具结果] ${destination}: ${result.condition}, ${result.temperature}`,
+    );
 
     return result;
   },
@@ -71,13 +72,15 @@ export const queryWeatherTool = tool(
     schema: z.object({
       destination: z.string().describe("目的地城市名称"),
     }),
-  }
+  },
 );
 
 /**
  * 普通函数版本的天气查询
  * 用于在节点中直接调用
  */
-export async function queryWeather(destination: string): Promise<WeatherResult> {
+export async function queryWeather(
+  destination: string,
+): Promise<WeatherResult> {
   return queryWeatherTool.invoke({ destination });
 }

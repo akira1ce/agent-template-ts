@@ -167,7 +167,10 @@ export function createClarifyPromptTemplate(domain: string) {
 /**
  * 结果生成模板
  */
-export function createGeneratePromptTemplate(domain: string, requirements: string) {
+export function createGeneratePromptTemplate(
+  domain: string,
+  requirements: string,
+) {
   return `你是结果生成节点，生成最终回复。
 
 你的输入：

@@ -38,7 +38,9 @@ import {
  */
 export function createTravelAgentGraph() {
   // 定义路由函数：判断是首轮还是补充轮
-  function routeAfterReceive(state: typeof TravelStateAnnotation.State): string {
+  function routeAfterReceive(
+    state: typeof TravelStateAnnotation.State,
+  ): string {
     // 如果有 latestUserSupplement，说明是补充轮
     if (state.latestUserSupplement) {
       return "complete_info";
