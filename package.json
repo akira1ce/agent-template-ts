@@ -4,9 +4,7 @@
   "description": "Modular Agent Template with LangChain.js and LangGraph.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch",
     "build": "tsc",
-    "start": "node dist/examples/travel-agent-demo.js",
     "test": "vitest",
     "type-check": "tsc --noEmit"
   },

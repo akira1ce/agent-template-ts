@@ -210,6 +210,7 @@ export const weatherNode = runtime.node(
 
 /**
  * 结果生成节点
+ * 支持流式输出
  */
 export const generateNode = runtime.node(
   async (state, config?) => {
@@ -227,8 +228,14 @@ export const generateNode = runtime.node(
 ${state.weather ? `天气情况：${JSON.stringify(state.weather, null, 2)}` : ""}
   `.trim();
 
-    const result = await chain.invoke({ input: contextInfo }, config);
-    const generatedReply = result.content as string;
+    // 使用 stream 来支持流式输出
+    const stream = await chain.stream({ input: contextInfo }, config);
+    let generatedReply = "";
+
+    for await (const chunk of stream) {
+      const token = chunk.content as string;
+      generatedReply += token;
+    }
 
     return { generatedReply };
   },
