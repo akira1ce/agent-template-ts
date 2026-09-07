@@ -280,13 +280,3 @@ export const replyNode = runtime.node(
   },
   { displayName: "send_reply" },
 );
-
-/**
- * 条件判断：是否继续执行
- */
-export function shouldContinue(state: TravelState): string {
-  if (state.informationGap?.readyToContinue) {
-    return "plan";
-  }
-  return "wait";
-}

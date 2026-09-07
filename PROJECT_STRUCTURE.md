@@ -118,7 +118,10 @@ agent-template-ts/
 - `generateNode` - 结果生成节点
 - `validateNode` - 结果验证节点
 - `replyNode` - 回复节点
-- `shouldContinue()` - 条件判断函数
+
+**travel/routes.ts** - 路由判断函数
+- `routeAfterReceive()` - 判断是首轮还是补充轮
+- `shouldContinue()` - 判断信息是否完整，决定继续或等待
 
 **travel/graph.ts** - 领域图定义
 - `createTravelAgentGraph()` - 创建 Travel Agent 图

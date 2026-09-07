@@ -365,7 +365,7 @@ src/
 **实现方式：**
 
 ```typescript
-// 条件路由函数
+// routes.ts - 条件路由函数集中管理
 export function shouldContinue(state: TravelState): string {
   if (state.informationGap?.readyToContinue) {
     return "plan";
@@ -373,7 +373,16 @@ export function shouldContinue(state: TravelState): string {
   return "wait"; // END
 }
 
-// 图定义
+export function routeAfterReceive(state: TravelState): string {
+  if (state.latestUserSupplement) {
+    return "complete_info";
+  }
+  return "identify_intent";
+}
+
+// graph.ts - 图定义
+import { shouldContinue, routeAfterReceive } from "./routes.js";
+
 graph.addConditionalEdges("clarify", shouldContinue, {
   plan: "plan",
   wait: END,

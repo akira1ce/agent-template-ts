@@ -21,8 +21,8 @@ import {
   generateNode,
   validateNode,
   replyNode,
-  shouldContinue,
 } from "./nodes.js";
+import { routeAfterReceive, shouldContinue } from "./routes.js";
 
 /**
  * 创建 Travel Agent 图
@@ -37,18 +37,6 @@ import {
  * @returns 编译后的可执行图
  */
 export function createTravelAgentGraph() {
-  // 定义路由函数：判断是首轮还是补充轮
-  function routeAfterReceive(
-    state: typeof TravelStateAnnotation.State,
-  ): string {
-    // 如果有 latestUserSupplement，说明是补充轮
-    if (state.latestUserSupplement) {
-      return "complete_info";
-    }
-    // 否则是首轮
-    return "identify_intent";
-  }
-
   // 创建状态图并链式添加所有节点
   const graph = new StateGraph(TravelStateAnnotation)
     .addNode("receive", receiveNode)

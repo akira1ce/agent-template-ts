@@ -120,6 +120,7 @@ src/
 ### Travel Agent（领域示例）
 - ✅ `src/agents/travel/state.ts` - 领域状态
 - ✅ `src/agents/travel/nodes.ts` - 领域节点
+- ✅ `src/agents/travel/routes.ts` - 路由判断函数 ⭐
 - ✅ `src/agents/travel/graph.ts` - 领域图定义
 - ✅ `src/agents/travel/prompts.ts` - 领域 Prompt ⭐
 - ✅ `src/agents/travel/index.ts` - 领域导出
