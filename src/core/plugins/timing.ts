@@ -22,7 +22,7 @@ export class TimingPlugin<S = any> implements AgentPlugin<S> {
   constructor(options: TimingPluginOptions = {}) {
     this.options = {
       slowThreshold: options.slowThreshold ?? 5000, // 默认 5 秒
-      printTiming: options.printTiming ?? true,
+      printTiming: options.printTiming ?? false, // 默认不打印，由 LoggerPlugin 负责
     };
   }
 
