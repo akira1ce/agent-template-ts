@@ -12,79 +12,24 @@
  */
 
 /**
- * Prompt 工程最佳实践
- */
-export const PROMPT_BEST_PRACTICES = {
-  /**
-   * 1. 职责单一原则
-   * 每个 Prompt 只负责一个节点的工作
-   */
-  SINGLE_RESPONSIBILITY: `
-示例：
-- 意图识别节点：只判断用户想做什么
-- 信息抽取节点：只记录明确的事实
-- 不要让一个 Prompt 做多件事
-  `,
-
-  /**
-   * 2. 明确边界原则
-   * 清楚告诉模型"要做什么"和"不要做什么"
-   */
-  CLEAR_BOUNDARIES: `
-示例：
-你是信息抽取节点，只记录明确的事实。
-
-**要做的：**
-- 提取用户明确提到的信息
-- 未提到的返回 null
-
-**不要做的：**
-- 不要推断或猜测
-- 不要判断信息是否完整
-- 不要提问
-  `,
-
-  /**
-   * 3. 结构化输出原则
-   * 使用 Zod Schema 定义输出格式
-   */
-  STRUCTURED_OUTPUT: `
-使用 createStructuredChain() 确保输出格式：
-
-const chain = createStructuredChain(
-  PROMPT,
-  z.object({
-    field1: z.string(),
-    field2: z.number(),
-  })
-);
-  `,
-
-  /**
-   * 4. 示例驱动原则
-   * 在 Prompt 中提供具体示例
-   */
-  EXAMPLE_DRIVEN: `
-**示例：**
-输入："我明天去上海"
-输出：{ destination: "上海", date: "明天", duration: null }
-
-输入："停留2天"
-输出：{ destination: null, date: null, duration: 2 }
-  `,
-};
-
-/**
  * 通用 Prompt 模板
  *
  * 各个 Agent 可以基于这些模板创建自己的 Prompt
+ * 使用方式：
+ * ```
+ * import { PromptTemplate } from "@langchain/core/prompts";
+ *
+ * const template = PromptTemplate.fromTemplate(INTENT_TEMPLATE, {
+ *   templateFormat: "mustache",
+ * });
+ * const prompt = await template.format({ domain: "旅行规划" });
+ * ```
  */
 
 /**
  * 意图识别模板
  */
-export function createIntentPromptTemplate(domain: string, fields: string) {
-  return `你是 ${domain} 的意图识别节点，只判断用户想做什么。
+export const INTENT_TEMPLATE = `你是 {{domain}} 的意图识别节点，只判断用户想做什么。
 
 你的职责：
 - 识别用户当前想完成的事情（intent）
@@ -103,13 +48,11 @@ export function createIntentPromptTemplate(domain: string, fields: string) {
 - 高：用户意图明确，表述清晰
 - 中：用户意图基本明确，但表述有歧义
 - 低：用户意图不清晰，需要进一步澄清`;
-}
 
 /**
  * 信息抽取模板
  */
-export function createExtractPromptTemplate(fields: string, examples: string) {
-  return `你是信息抽取节点，只记录明确的事实。
+export const EXTRACT_TEMPLATE = `你是信息抽取节点，只记录明确的事实。
 
 你的职责：
 - 从用户输入中提取关键信息字段
@@ -117,7 +60,7 @@ export function createExtractPromptTemplate(fields: string, examples: string) {
 - 对于未提到的信息返回 null
 
 **抽取字段：**
-${fields}
+{{fields}}
 
 **重要原则：**
 - 没有提到的返回 null，不要猜测
@@ -125,14 +68,12 @@ ${fields}
 - 不要判断信息是否完整
 - 不要提问
 
-${examples}`;
-}
+{{examples}}`;
 
 /**
  * 信息澄清模板
  */
-export function createClarifyPromptTemplate(domain: string) {
-  return `你是信息澄清节点，判断信息是否完整并决定如何继续。
+export const CLARIFY_TEMPLATE = `你是信息澄清节点，判断信息是否完整并决定如何继续。
 
 你的输入：
 - 用户意图（intent）
@@ -162,16 +103,11 @@ export function createClarifyPromptTemplate(domain: string) {
 - 一次只问一个问题
 - 如果 askUserFor 非空，readyToContinue 必须为 false
 - 如果所有必需信息都有了，readyToContinue 为 true`;
-}
 
 /**
  * 结果生成模板
  */
-export function createGeneratePromptTemplate(
-  domain: string,
-  requirements: string,
-) {
-  return `你是结果生成节点，生成最终回复。
+export const GENERATE_TEMPLATE = `你是结果生成节点，生成最终回复。
 
 你的输入：
 - 用户意图和需求
@@ -191,5 +127,4 @@ export function createGeneratePromptTemplate(
 - 结构清晰（使用标题、列表）
 - 信息完整
 - 有实用价值
-${requirements}`;
-}
+{{requirements}}`;
