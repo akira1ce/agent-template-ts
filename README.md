@@ -30,29 +30,38 @@ agent-template-ts/
 ├── src/
 │   ├── core/                    # 核心规范模块（跨领域复用）
 │   │   ├── state.ts            # 状态管理规范
-│   │   ├── nodes.ts            # 节点模式规范
+│   │   ├── runtime.ts          # 运行时工具（节点装饰器等）
 │   │   ├── llm.ts              # LLM 调用规范
-│   │   ├── graph.ts            # 图编排规范
-│   │   └── prompts.ts          # Prompt 模式和最佳实践
+│   │   ├── prompts.ts          # Prompt 模式和最佳实践
+│   │   └── plugins/            # 核心插件系统 ⭐
+│   │       ├── index.ts       # 插件导出
+│   │       ├── logger.ts      # 日志插件
+│   │       ├── timing.ts      # 性能计时插件
+│   │       └── retry.ts       # 重试插件
 │   │
 │   ├── tools/                   # 共享工具（跨领域）
-│   │   └── index.ts            # 通用工具定义
+│   │   └── weather.ts          # 天气查询工具
 │   │
 │   ├── agents/                  # Agent 领域实现
 │   │   └── travel/             # 出差助手领域
 │   │       ├── state.ts       # 领域状态
 │   │       ├── nodes.ts       # 领域节点
 │   │       ├── graph.ts       # 领域图定义
-│   │       ├── prompts.ts     # 领域 Prompt ⭐
+│   │       ├── routes.ts      # 路由判断逻辑 ⭐
+│   │       ├── prompts.ts     # 领域 Prompt
 │   │       └── index.ts       # 领域导出
 │   │
 │   └── examples/                # 使用示例
-│       └── travel-agent-demo.ts
+│       ├── interactive-demo.ts  # 交互式演示
+│       └── multi-turn-demo.ts   # 多轮对话演示
+│
+├── scripts/
+│   └── create-agent.ts         # Agent 脚手架 CLI ⭐
 ```
 
 ### DDD 核心原则
 
-**Prompt 属于领域知识** ⭐
+**1. Prompt 属于领域知识** ⭐
 
 - ❌ **不推荐**：全局 `src/prompts/` 目录集中管理所有 Prompt
 - ✅ **推荐**：每个领域在自己的模块内管理自己的 Prompt
@@ -71,6 +80,54 @@ import { INTENT_PROMPT } from "./prompts.js";
 3. **清晰边界** - 避免全局 Prompt 文件越来越臃肿
 4. **易于维护** - 修改一个领域的 Prompt 不影响其他领域
 
+**2. 路由逻辑内聚** ⭐
+
+- ❌ **不推荐**：将路由判断函数散落在图定义中
+- ✅ **推荐**：集中管理路由逻辑在 `routes.ts` 文件中
+
+```typescript
+// ❌ 旧方式：在 graph.ts 中内联路由函数
+.addConditionalEdges("receive", (state) => {
+  if (state.latestUserSupplement) return "complete_info";
+  return "identify_intent";
+})
+
+// ✅ 新方式：从 routes.ts 导入
+import { routeAfterReceive, shouldContinue } from "./routes.js";
+
+.addConditionalEdges("receive", routeAfterReceive, {
+  identify_intent: "identify_intent",
+  complete_info: "complete_info",
+})
+```
+
+**理由：**
+1. **可测试性** - 路由函数可以独立测试
+2. **可维护性** - 路由逻辑集中管理，易于查找和修改
+3. **可读性** - 图定义更简洁，专注于流程编排
+4. **可复用性** - 相同的路由逻辑可以在多处使用
+
+**3. 插件系统增强** ⭐
+
+使用核心插件系统为节点添加横切关注点：
+
+```typescript
+import { LoggerPlugin, TimingPlugin, RetryPlugin } from "../../core/plugins/index.js";
+
+// 为节点添加日志、性能监控、重试能力
+const enhancedNode = LoggerPlugin(
+  TimingPlugin(
+    RetryPlugin(_rawNode, { maxRetries: 3 })
+  )
+);
+```
+
+**理由：**
+1. **关注点分离** - 业务逻辑和横切关注点分离
+2. **可组合性** - 插件可以自由组合使用
+3. **可扩展性** - 容易添加新的插件
+4. **标准化** - 统一的插件接口和模式
+
 ## 🚀 快速开始
 
 ```bash
@@ -83,6 +140,10 @@ cp .env.example .env
 
 # 3. 运行示例
 npm run dev
+
+# 4. 创建新的 Agent（使用脚手架）⭐
+npm run create-agent
+# 按提示输入 Agent 名称，自动生成完整的领域模块结构
 ```
 
 ## 💡 核心规范
@@ -100,20 +161,51 @@ export const MyStateAnnotation = Annotation.Root({
 });
 ```
 
-### 2. 节点设计规范
+### 2. 节点设计规范（使用插件系统）
 
 ```typescript
-import { withLogging } from "../../core/nodes.js";
+import { LoggerPlugin, TimingPlugin } from "../../core/plugins/index.js";
 
 async function _myNode(state: MyState) {
   // 节点逻辑
   return { result: "done" };
 }
 
-export const myNode = withLogging(_myNode, "myNode");
+// 使用插件增强节点
+export const myNode = LoggerPlugin(TimingPlugin(_myNode));
 ```
 
-### 3. Prompt 管理规范（DDD）
+### 3. 路由逻辑规范（集中管理）
+
+**在 `routes.ts` 中定义路由函数：**
+
+```typescript
+// src/agents/my-agent/routes.ts
+
+/**
+ * 路由函数：判断执行路径
+ */
+export function routeAfterStep(state: MyState): string {
+  if (state.condition) {
+    return "path_a";
+  }
+  return "path_b";
+}
+```
+
+**在图中使用：**
+
+```typescript
+// src/agents/my-agent/graph.ts
+import { routeAfterStep } from "./routes.js";
+
+graph.addConditionalEdges("step", routeAfterStep, {
+  path_a: "node_a",
+  path_b: "node_b",
+});
+```
+
+### 4. Prompt 管理规范（DDD）
 
 **在领域内创建 `prompts.ts`：**
 
@@ -140,7 +232,7 @@ export const EXTRACT_PROMPT = `你是信息抽取节点...`;
 import { INTENT_PROMPT } from "./prompts.js"; // 从本领域导入
 ```
 
-### 4. LLM 调用规范
+### 5. LLM 调用规范
 
 ```typescript
 import { createStructuredChain, LLMPresets } from "../../core/llm.js";
@@ -154,14 +246,19 @@ const chain = createStructuredChain(
 const result = await chain.invoke({ input: userInput });
 ```
 
-### 5. 图编排规范
+### 6. 图编排规范
 
 ```typescript
-import { StateGraph, END } from "@langchain/langgraph";
+import { StateGraph, START, END } from "@langchain/langgraph";
+import { routeAfterStep } from "./routes.js";
 
-const graph = new StateGraph(StateAnnotation);
-graph.addNode("node1", node1Func);
-graph.addEdge("node1", END);
+const graph = new StateGraph(StateAnnotation)
+  .addNode("node1", node1Func)
+  .addConditionalEdges("node1", routeAfterStep, {
+    continue: "node2",
+    end: END,
+  });
+  
 const app = graph.compile();
 ```
 
@@ -169,7 +266,14 @@ const app = graph.compile();
 
 遵循 DDD 原则，创建一个自治的领域模块：
 
-### Step 1: 创建领域目录
+### Step 0: 使用脚手架快速创建（推荐）⭐
+
+```bash
+npm run create-agent
+# 输入 Agent 名称，自动生成完整的领域模块结构
+```
+
+### Step 1: 手动创建领域目录（可选）
 
 ```bash
 mkdir -p src/agents/my-agent
@@ -211,7 +315,7 @@ export const EXTRACT_PROMPT = `你是信息抽取节点...`;
 ### Step 4: 实现领域节点 (`nodes.ts`)
 
 ```typescript
-import { withLogging } from "../../core/nodes.js";
+import { LoggerPlugin, TimingPlugin } from "../../core/plugins/index.js";
 import { createStructuredChain } from "../../core/llm.js";
 import { INTENT_PROMPT } from "./prompts.js"; // 从本领域导入
 
@@ -221,22 +325,51 @@ async function _intentNode(state: MyAgentState) {
   return { intent: result };
 }
 
-export const intentNode = withLogging(_intentNode, "intent");
+export const intentNode = LoggerPlugin(TimingPlugin(_intentNode));
 ```
 
-### Step 5: 构建领域图 (`graph.ts`)
+### Step 5: 定义路由逻辑 (`routes.ts`) ⭐
 
 ```typescript
-import { StateGraph, END } from "@langchain/langgraph";
+import type { MyAgentState } from "./state.js";
+
+/**
+ * 路由函数：判断执行路径
+ */
+export function routeAfterIntent(state: MyAgentState): string {
+  if (state.intent === "query") {
+    return "query_path";
+  }
+  return "default_path";
+}
+
+/**
+ * 条件判断：是否继续执行
+ */
+export function shouldContinue(state: MyAgentState): string {
+  if (state.isComplete) {
+    return "end";
+  }
+  return "continue";
+}
+```
+
+### Step 6: 构建领域图 (`graph.ts`)
+
+```typescript
+import { StateGraph, START, END } from "@langchain/langgraph";
 import { MyAgentStateAnnotation } from "./state.js";
 import { intentNode } from "./nodes.js";
+import { routeAfterIntent, shouldContinue } from "./routes.js";
 
 export function createMyAgentGraph() {
-  const graph = new StateGraph(MyAgentStateAnnotation);
-  
-  graph.addNode("intent", intentNode);
-  graph.setEntryPoint("intent");
-  graph.addEdge("intent", END);
+  const graph = new StateGraph(MyAgentStateAnnotation)
+    .addNode("intent", intentNode)
+    .addEdge(START, "intent")
+    .addConditionalEdges("intent", routeAfterIntent, {
+      query_path: "query",
+      default_path: END,
+    });
   
   return graph.compile();
 }
@@ -244,18 +377,87 @@ export function createMyAgentGraph() {
 export const myAgent = createMyAgentGraph();
 ```
 
-### Step 6: 导出领域模块 (`index.ts`)
+### Step 7: 导出领域模块 (`index.ts`)
 
 ```typescript
 export * from "./state.js";
 export * from "./nodes.js";
+export * from "./routes.js"; // 导出路由函数
 export * from "./graph.js";
-export * from "./prompts.js"; // 导出 Prompt
+export * from "./prompts.js";
 ```
 
 ## 🔥 核心特性
 
-### 1. 多轮对话支持
+### 1. 插件系统 ⭐
+
+核心插件提供横切关注点的能力增强：
+
+**日志插件（LoggerPlugin）**
+```typescript
+import { LoggerPlugin } from "../../core/plugins/index.js";
+
+const node = LoggerPlugin(_rawNode);
+// 自动记录节点的输入输出和执行状态
+```
+
+**性能计时插件（TimingPlugin）**
+```typescript
+import { TimingPlugin } from "../../core/plugins/index.js";
+
+const node = TimingPlugin(_rawNode);
+// 自动记录节点执行时间
+```
+
+**重试插件（RetryPlugin）**
+```typescript
+import { RetryPlugin } from "../../core/plugins/index.js";
+
+const node = RetryPlugin(_rawNode, { 
+  maxRetries: 3,
+  delayMs: 1000 
+});
+// 自动重试失败的节点
+```
+
+**组合使用**
+```typescript
+const node = LoggerPlugin(
+  TimingPlugin(
+    RetryPlugin(_rawNode, { maxRetries: 3 })
+  )
+);
+// 一个节点同时具备日志、计时、重试能力
+```
+
+### 2. 路由逻辑分离 ⭐
+
+将条件路由逻辑提取到 `routes.ts` 中集中管理：
+
+```typescript
+// src/agents/travel/routes.ts
+export function routeAfterReceive(state: TravelState): string {
+  if (state.latestUserSupplement) {
+    return "complete_info";
+  }
+  return "identify_intent";
+}
+
+// src/agents/travel/graph.ts
+import { routeAfterReceive } from "./routes.js";
+
+graph.addConditionalEdges("receive", routeAfterReceive, {
+  identify_intent: "identify_intent",
+  complete_info: "complete_info",
+});
+```
+
+**优势：**
+- 路由函数可独立测试
+- 图定义更简洁易读
+- 路由逻辑可复用
+
+### 3. 多轮对话支持
 
 基于 `informationGap` 模式：
 
@@ -340,15 +542,22 @@ const output = await chain.invoke(input);
 **领域文件：**
 - `state.ts` - 出差领域状态
 - `nodes.ts` - 出差领域节点
+- `routes.ts` - 路由判断逻辑 ⭐
 - `graph.ts` - 出差领域图定义
-- `prompts.ts` - 出差领域 Prompt ⭐
+- `prompts.ts` - 出差领域 Prompt
 - `index.ts` - 领域导出
 
 **功能：**
 - 意图识别、信息抽取、信息澄清
 - 多轮对话和信息补全
+- 条件路由（首轮 vs 补充轮）
 - 工具调用（天气查询）
 - 结果生成和验证
+
+**架构亮点：**
+- 使用插件系统增强节点能力
+- 路由逻辑独立管理，可测试
+- 清晰的执行流程和状态管理
 
 ### 扩展场景
 
@@ -370,6 +579,7 @@ const output = await chain.invoke(input);
 
 - ✅ 每个 Agent 是一个独立的领域模块
 - ✅ 领域内的 Prompt 属于领域知识
+- ✅ 领域内的路由逻辑放在 `routes.ts`
 - ✅ 共享的规范放在 `core/`
 - ❌ 不要创建全局的 Prompt 文件
 
@@ -382,14 +592,29 @@ const output = await chain.invoke(input);
 ### 3. 节点设计
 
 - ✅ 职责单一，一个节点做一件事
-- ✅ 使用装饰器增强功能
+- ✅ 使用插件系统增强功能（日志、计时、重试）
 - ✅ 返回增量更新（`Partial<State>`）
+- ✅ 分离业务逻辑和横切关注点
 
-### 4. Prompt 管理
+### 4. 路由设计
+
+- ✅ 将路由函数提取到 `routes.ts`
+- ✅ 为路由函数添加清晰的注释说明职责
+- ✅ 保持路由函数的纯函数特性（无副作用）
+- ✅ 使用命名路由提高可读性
+
+### 5. Prompt 管理
 
 - ✅ 在领域目录内创建 `prompts.ts`
 - ✅ 明确每个 Prompt 的职责边界
 - ✅ 使用注释说明"要做什么"和"不要做什么"
+
+### 6. 插件使用
+
+- ✅ 所有节点默认使用 LoggerPlugin
+- ✅ 性能关键节点使用 TimingPlugin
+- ✅ 网络调用节点使用 RetryPlugin
+- ✅ 按需组合多个插件
 
 ## 🔗 相关资源
 
