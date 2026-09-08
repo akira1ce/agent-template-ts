@@ -35,6 +35,7 @@ import {
   TimingPlugin,
   RetryPlugin,
 } from "@core/plugins/index.js";
+import dedent from "dedent";
 
 /**
  * 创建 Travel Agent 的 Runtime
@@ -102,10 +103,10 @@ export const clarifyNode = runtime.node(
       LLMPresets.deepseek(),
     );
 
-    const contextInfo = `
-用户意图：${JSON.stringify(state.userIntent, null, 2)}
-已提取信息：${JSON.stringify(state.information, null, 2)}
-  `.trim();
+    const contextInfo = dedent`
+      用户意图：${JSON.stringify(state.userIntent, null, 2)}
+      已提取信息：${JSON.stringify(state.information, null, 2)}
+    `;
 
     const informationGap = await chain.invoke({ input: contextInfo }, config);
 
@@ -147,10 +148,10 @@ export const completeNode = runtime.node(
       LLMPresets.deepseek(),
     );
 
-    const contextInfo = `
-用户意图：${JSON.stringify(state.userIntent, null, 2)}
-已提取信息：${JSON.stringify(mergedInfo, null, 2)}
-  `.trim();
+    const contextInfo = dedent`
+      用户意图：${JSON.stringify(state.userIntent, null, 2)}
+      已提取信息：${JSON.stringify(mergedInfo, null, 2)}
+    `;
 
     const informationGap = await clarifyChain.invoke(
       { input: contextInfo },
@@ -177,10 +178,10 @@ export const planNode = runtime.node(
       LLMPresets.deepseek(),
     );
 
-    const contextInfo = `
-用户意图：${JSON.stringify(state.userIntent, null, 2)}
-完整信息：${JSON.stringify(state.information, null, 2)}
-  `.trim();
+    const contextInfo = dedent`
+      用户意图：${JSON.stringify(state.userIntent, null, 2)}
+      完整信息：${JSON.stringify(state.information, null, 2)}
+    `;
 
     const plan = await chain.invoke({ input: contextInfo }, config);
 
@@ -222,11 +223,11 @@ export const generateNode = runtime.node(
     const llm = createLLM(LLMPresets.deepseek());
     const chain = prompt.pipe(llm);
 
-    const contextInfo = `
-用户需求：${JSON.stringify(state.userIntent, null, 2)}
-收集信息：${JSON.stringify(state.information, null, 2)}
-${state.weather ? `天气情况：${JSON.stringify(state.weather, null, 2)}` : ""}
-  `.trim();
+    const contextInfo = dedent`
+      用户需求：${JSON.stringify(state.userIntent, null, 2)}
+      收集信息：${JSON.stringify(state.information, null, 2)}
+      ${state.weather ? `天气情况：${JSON.stringify(state.weather, null, 2)}` : ""}
+    `;
 
     // 使用 stream 来支持流式输出
     const stream = await chain.stream({ input: contextInfo }, config);
@@ -253,12 +254,13 @@ export const validateNode = runtime.node(
       LLMPresets.deepseek(),
     );
 
-    const contextInfo = `
-生成的回复：
-${state.generatedReply}
+    const contextInfo = dedent`
+      生成的回复：
+      ${state.generatedReply}
 
-用户原始需求：${JSON.stringify(state.userIntent, null, 2)}
-  `.trim();
+      用户原始需求：
+      ${JSON.stringify(state.userIntent, null, 2)}
+    `;
 
     const validation = await chain.invoke({ input: contextInfo }, config);
 
