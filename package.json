@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "vitest",
     "type-check": "tsc --noEmit",
     "create-agent": "tsx scripts/create-agent.ts"
   },
@@ -30,7 +29,6 @@
   "devDependencies": {
     "@types/node": "^22.7.5",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.2"
+    "typescript": "^5.6.3"
   }
 }

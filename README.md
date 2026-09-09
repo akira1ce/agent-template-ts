@@ -8,11 +8,11 @@
 
 我们不重复实现图引擎，而是专注于：
 
-✅ **规范化开发模式** - 统一的项目结构和开发范式  
-✅ **领域驱动设计** - 遵循 DDD 原则，领域逻辑内聚  
-✅ **模块化节点设计** - 可复用的节点模式和装饰器  
-✅ **工程化 Prompt 管理** - Prompt 属于领域知识，与领域放在一起  
-✅ **标准化状态管理** - 类型安全的状态定义  
+✅ **规范化开发模式** - 统一的项目结构和开发范式
+✅ **领域驱动设计** - 遵循 DDD 原则，领域逻辑内聚
+✅ **模块化节点设计** - 可复用的节点模式和装饰器
+✅ **工程化 Prompt 管理** - Prompt 属于领域知识，与领域放在一起
+✅ **标准化状态管理** - 类型安全的状态定义
 ✅ **可复用的 Loop 模式** - 多轮对话和信息补全
 
 ## 📦 技术栈
@@ -75,6 +75,7 @@ import { INTENT_PROMPT } from "./prompts.js";
 ```
 
 **理由：**
+
 1. **内聚性** - Prompt 和业务逻辑紧密相关，应该放在一起
 2. **自治性** - 每个领域可以独立演化自己的 Prompt
 3. **清晰边界** - 避免全局 Prompt 文件越来越臃肿
@@ -102,6 +103,7 @@ import { routeAfterReceive, shouldContinue } from "./routes.js";
 ```
 
 **理由：**
+
 1. **可测试性** - 路由函数可以独立测试
 2. **可维护性** - 路由逻辑集中管理，易于查找和修改
 3. **可读性** - 图定义更简洁，专注于流程编排
@@ -109,24 +111,38 @@ import { routeAfterReceive, shouldContinue } from "./routes.js";
 
 **3. 插件系统增强** ⭐
 
-使用核心插件系统为节点添加横切关注点：
+使用 `AgentRuntime` 和插件系统为节点添加横切关注点：
 
 ```typescript
-import { LoggerPlugin, TimingPlugin, RetryPlugin } from "../../core/plugins/index.js";
+import { AgentRuntime } from "../../core/runtime.js";
+import {
+  LoggerPlugin,
+  TimingPlugin,
+  RetryPlugin,
+} from "../../core/plugins/index.js";
 
-// 为节点添加日志、性能监控、重试能力
-const enhancedNode = LoggerPlugin(
-  TimingPlugin(
-    RetryPlugin(_rawNode, { maxRetries: 3 })
-  )
+// 创建 Runtime 并注册插件
+const runtime = new AgentRuntime<MyState>()
+  .use(new LoggerPlugin({ logState: false, logResult: false }))
+  .use(new TimingPlugin({ slowThreshold: 3000 }))
+  .use(new RetryPlugin({ maxRetries: 2, retryDelay: 1000 }));
+
+// 使用 runtime.node() 包装节点，自动应用所有插件
+const myNode = runtime.node(
+  async (state, config?) => {
+    // 节点逻辑
+    return { result: "done" };
+  },
+  { displayName: "my_node" },
 );
 ```
 
 **理由：**
+
 1. **关注点分离** - 业务逻辑和横切关注点分离
-2. **可组合性** - 插件可以自由组合使用
+2. **全局配置** - 一次配置，所有节点生效
 3. **可扩展性** - 容易添加新的插件
-4. **标准化** - 统一的插件接口和模式
+4. **标准化** - 统一的插件接口和生命周期钩子
 
 ## 🚀 快速开始
 
@@ -164,15 +180,21 @@ export const MyStateAnnotation = Annotation.Root({
 ### 2. 节点设计规范（使用插件系统）
 
 ```typescript
+import { AgentRuntime } from "../../core/runtime.js";
 import { LoggerPlugin, TimingPlugin } from "../../core/plugins/index.js";
 
-async function _myNode(state: MyState) {
+// 创建 Runtime 并注册插件
+const runtime = new AgentRuntime<MyState>()
+  .use(new LoggerPlugin())
+  .use(new TimingPlugin());
+
+// 使用 runtime.node() 包装节点
+async function _myNode(state: MyState, config?) {
   // 节点逻辑
   return { result: "done" };
 }
 
-// 使用插件增强节点
-export const myNode = LoggerPlugin(TimingPlugin(_myNode));
+export const myNode = runtime.node(_myNode, { displayName: "my_node" });
 ```
 
 ### 3. 路由逻辑规范（集中管理）
@@ -238,9 +260,9 @@ import { INTENT_PROMPT } from "./prompts.js"; // 从本领域导入
 import { createStructuredChain, LLMPresets } from "../../core/llm.js";
 
 const chain = createStructuredChain(
-  PROMPT,      // 系统 Prompt
-  Schema,      // Zod Schema
-  LLMPresets.precise()
+  PROMPT, // 系统 Prompt
+  Schema, // Zod Schema
+  LLMPresets.deepseek(), // 或 LLMPresets.openai()
 );
 
 const result = await chain.invoke({ input: userInput });
@@ -258,7 +280,7 @@ const graph = new StateGraph(StateAnnotation)
     continue: "node2",
     end: END,
   });
-  
+
 const app = graph.compile();
 ```
 
@@ -287,7 +309,7 @@ import { BaseAgentState } from "../../core/state.js";
 
 export const MyAgentStateAnnotation = Annotation.Root({
   ...BaseAgentState.spec,
-  
+
   // 添加领域字段
   myField: Annotation<string | null>({
     reducer: (prev, next) => next ?? prev,
@@ -315,17 +337,34 @@ export const EXTRACT_PROMPT = `你是信息抽取节点...`;
 ### Step 4: 实现领域节点 (`nodes.ts`)
 
 ```typescript
-import { LoggerPlugin, TimingPlugin } from "../../core/plugins/index.js";
-import { createStructuredChain } from "../../core/llm.js";
+import { AgentRuntime } from "../../core/runtime.js";
+import {
+  LoggerPlugin,
+  TimingPlugin,
+  RetryPlugin,
+} from "../../core/plugins/index.js";
+import { createStructuredChain, LLMPresets } from "../../core/llm.js";
 import { INTENT_PROMPT } from "./prompts.js"; // 从本领域导入
 
-async function _intentNode(state: MyAgentState) {
-  const chain = createStructuredChain(INTENT_PROMPT, IntentSchema);
-  const result = await chain.invoke({ input: state.input });
-  return { intent: result };
-}
+// 创建 Runtime 并配置全局插件
+const runtime = new AgentRuntime<MyAgentState>()
+  .use(new LoggerPlugin({ logState: false, logResult: false }))
+  .use(new TimingPlugin({ slowThreshold: 3000 }))
+  .use(new RetryPlugin({ maxRetries: 2, retryDelay: 1000 }));
 
-export const intentNode = LoggerPlugin(TimingPlugin(_intentNode));
+// 使用 runtime.node() 包装节点
+export const intentNode = runtime.node(
+  async (state, config?) => {
+    const chain = createStructuredChain(
+      INTENT_PROMPT,
+      IntentSchema,
+      LLMPresets.deepseek(),
+    );
+    const result = await chain.invoke({ input: state.input }, config);
+    return { intent: result };
+  },
+  { displayName: "identify_intent" },
+);
 ```
 
 ### Step 5: 定义路由逻辑 (`routes.ts`) ⭐
@@ -370,65 +409,74 @@ export function createMyAgentGraph() {
       query_path: "query",
       default_path: END,
     });
-  
+
   return graph.compile();
 }
 
 export const myAgent = createMyAgentGraph();
 ```
 
-### Step 7: 导出领域模块 (`index.ts`)
-
-```typescript
-export * from "./state.js";
-export * from "./nodes.js";
-export * from "./routes.js"; // 导出路由函数
-export * from "./graph.js";
-export * from "./prompts.js";
-```
-
 ## 🔥 核心特性
 
 ### 1. 插件系统 ⭐
 
-核心插件提供横切关注点的能力增强：
+基于 `AgentRuntime` 的插件系统提供横切关注点的能力增强：
+
+**创建 Runtime 并注册插件**
+
+```typescript
+import { AgentRuntime } from "../../core/runtime.js";
+import {
+  LoggerPlugin,
+  TimingPlugin,
+  RetryPlugin,
+} from "../../core/plugins/index.js";
+
+const runtime = new AgentRuntime<MyState>()
+  .use(new LoggerPlugin({ logState: false, logResult: false }))
+  .use(new TimingPlugin({ slowThreshold: 3000 }))
+  .use(new RetryPlugin({ maxRetries: 2, retryDelay: 1000 }));
+```
 
 **日志插件（LoggerPlugin）**
-```typescript
-import { LoggerPlugin } from "../../core/plugins/index.js";
 
-const node = LoggerPlugin(_rawNode);
-// 自动记录节点的输入输出和执行状态
-```
+- 自动记录节点的执行情况
+- 支持简洁模式和详细模式
+- 性能图标展示（⚡ 快速，🐢 慢速）
 
 **性能计时插件（TimingPlugin）**
-```typescript
-import { TimingPlugin } from "../../core/plugins/index.js";
 
-const node = TimingPlugin(_rawNode);
-// 自动记录节点执行时间
-```
+- 自动记录节点执行时间
+- 慢节点警告（超过阈值）
 
 **重试插件（RetryPlugin）**
-```typescript
-import { RetryPlugin } from "../../core/plugins/index.js";
 
-const node = RetryPlugin(_rawNode, { 
-  maxRetries: 3,
-  delayMs: 1000 
-});
-// 自动重试失败的节点
-```
+- 自动重试失败的节点
+- 可配置重试次数和延迟
+- 可针对特定节点禁用
 
-**组合使用**
+**使用 runtime.node() 包装节点**
+
 ```typescript
-const node = LoggerPlugin(
-  TimingPlugin(
-    RetryPlugin(_rawNode, { maxRetries: 3 })
-  )
+// 自动应用所有已注册的插件
+export const myNode = runtime.node(
+  async (state, config?) => {
+    // 节点逻辑
+    return { result: "done" };
+  },
+  {
+    displayName: "my_node",
+    disablePlugins: ["retry"], // 可选：禁用特定插件
+  },
 );
-// 一个节点同时具备日志、计时、重试能力
 ```
+
+**优势：**
+
+- 一次配置，所有节点生效
+- 支持节点级别的插件控制
+- 完整的生命周期钩子（onNodeStart, onNodeEnd, onNodeError）
+- 洋葱模型拦截器
 
 ### 2. 路由逻辑分离 ⭐
 
@@ -453,6 +501,7 @@ graph.addConditionalEdges("receive", routeAfterReceive, {
 ```
 
 **优势：**
+
 - 路由函数可独立测试
 - 图定义更简洁易读
 - 路由逻辑可复用
@@ -528,6 +577,7 @@ const output = await chain.invoke(input);
 ### DDD - 领域驱动设计
 
 **核心原则：**
+
 - 每个 Agent 是一个独立的领域
 - 领域内的所有内容（状态、节点、图、Prompt）放在一起
 - 领域之间通过清晰的接口交互
@@ -540,6 +590,7 @@ const output = await chain.invoke(input);
 位于 `src/agents/travel/`
 
 **领域文件：**
+
 - `state.ts` - 出差领域状态
 - `nodes.ts` - 出差领域节点
 - `routes.ts` - 路由判断逻辑 ⭐
@@ -548,6 +599,7 @@ const output = await chain.invoke(input);
 - `index.ts` - 领域导出
 
 **功能：**
+
 - 意图识别、信息抽取、信息澄清
 - 多轮对话和信息补全
 - 条件路由（首轮 vs 补充轮）
@@ -555,6 +607,7 @@ const output = await chain.invoke(input);
 - 结果生成和验证
 
 **架构亮点：**
+
 - 使用插件系统增强节点能力
 - 路由逻辑独立管理，可测试
 - 清晰的执行流程和状态管理
@@ -564,11 +617,13 @@ const output = await chain.invoke(input);
 按照相同的 DDD 结构创建：
 
 **Code Review Agent** (`src/agents/code-review/`)
+
 ```
 读取代码 → 分析问题 → 检查规范 → 生成报告
 ```
 
 **Customer Service Agent** (`src/agents/customer-service/`)
+
 ```
 意图分类 → 知识库搜索 → 生成回复 → 满意度跟踪
 ```
@@ -627,7 +682,3 @@ const output = await chain.invoke(input);
 ## 📄 License
 
 MIT
-
----
-
-**开始用 DDD 方式构建规范化的 Agent！** 🚀

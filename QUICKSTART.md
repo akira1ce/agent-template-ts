@@ -84,24 +84,32 @@ npm run dev
 
 ```
 src/
-├── core/           # 核心规范（跨领域复用）
+├── core/               # 核心规范（跨领域复用）
 │   ├── state.ts
-│   ├── nodes.ts
+│   ├── runtime.ts     # 运行时和插件系统
 │   ├── llm.ts
-│   ├── graph.ts
-│   └── prompts.ts       # Prompt 模式和最佳实践
+│   ├── prompts.ts     # Prompt 模式和最佳实践
+│   └── plugins/       # 核心插件系统 ⭐
+│       ├── index.ts
+│       ├── logger.ts
+│       ├── timing.ts
+│       └── retry.ts
 │
-├── tools/          # 共享工具（跨领域）
+├── tools/              # 共享工具（跨领域）
+│   └── weather.ts
 │
-├── agents/         # Agent 领域实现
-│   └── travel/     # Travel 领域
+├── agents/             # Agent 领域实现
+│   └── travel/        # Travel 领域
 │       ├── state.ts
 │       ├── nodes.ts
+│       ├── routes.ts  # 路由判断逻辑 ⭐
 │       ├── graph.ts
-│       ├── prompts.ts   # 领域 Prompt ⭐
+│       ├── prompts.ts # 领域 Prompt ⭐
 │       └── index.ts
 │
-└── examples/       # 运行示例
+└── examples/           # 运行示例
+    ├── interactive-demo.ts
+    └── multi-turn-demo.ts
 ```
 
 ## DDD 核心概念
@@ -180,32 +188,44 @@ export const EXTRACT_PROMPT = `你是信息抽取节点...`;
 ### Step 5: 实现领域节点 (`nodes.ts`)
 
 ```typescript
-import { withLogging } from "../../core/nodes.js";
-import { createStructuredChain } from "../../core/llm.js";
+import { AgentRuntime } from "../../core/runtime.js";
+import { LoggerPlugin, TimingPlugin, RetryPlugin } from "../../core/plugins/index.js";
+import { createStructuredChain, LLMPresets } from "../../core/llm.js";
 import { INTENT_PROMPT } from "./prompts.js"; // 从本领域导入 ⭐
 
-async function _intentNode(state: MyAgentState) {
-  const chain = createStructuredChain(INTENT_PROMPT, IntentSchema);
-  const result = await chain.invoke({ input: state.input });
-  return { intent: result };
-}
+// 创建 Runtime 并配置全局插件
+const runtime = new AgentRuntime<MyAgentState>()
+  .use(new LoggerPlugin({ logState: false, logResult: false }))
+  .use(new TimingPlugin({ slowThreshold: 3000 }))
+  .use(new RetryPlugin({ maxRetries: 2, retryDelay: 1000 }));
 
-export const intentNode = withLogging(_intentNode, "intent");
+// 使用 runtime.node() 包装节点
+export const intentNode = runtime.node(
+  async (state, config?) => {
+    const chain = createStructuredChain(
+      INTENT_PROMPT,
+      IntentSchema,
+      LLMPresets.deepseek()
+    );
+    const result = await chain.invoke({ input: state.input }, config);
+    return { intent: result };
+  },
+  { displayName: "identify_intent" }
+);
 ```
 
 ### Step 6: 构建领域图 (`graph.ts`)
 
 ```typescript
-import { StateGraph, END } from "@langchain/langgraph";
+import { StateGraph, START, END } from "@langchain/langgraph";
 import { MyAgentStateAnnotation } from "./state.js";
 import { intentNode } from "./nodes.js";
 
 export function createMyAgentGraph() {
-  const graph = new StateGraph(MyAgentStateAnnotation);
-  
-  graph.addNode("intent", intentNode);
-  graph.setEntryPoint("intent");
-  graph.addEdge("intent", END);
+  const graph = new StateGraph(MyAgentStateAnnotation)
+    .addNode("intent", intentNode)
+    .addEdge(START, "intent")
+    .addEdge("intent", END);
   
   return graph.compile();
 }
@@ -239,14 +259,24 @@ export const MyStateAnnotation = Annotation.Root({
 
 ### 2. 节点设计
 
-标准签名 + 装饰器：
+使用 `AgentRuntime` 和插件系统：
 
 ```typescript
-async function _myNode(state: MyState, config?: RunnableConfig) {
-  return { result: "done" };
-}
+import { AgentRuntime } from "../../core/runtime.js";
+import { LoggerPlugin, TimingPlugin } from "../../core/plugins/index.js";
 
-export const myNode = withLogging(_myNode, "myNode");
+// 创建 Runtime 并注册插件
+const runtime = new AgentRuntime<MyState>()
+  .use(new LoggerPlugin())
+  .use(new TimingPlugin());
+
+// 使用 runtime.node() 包装节点
+export const myNode = runtime.node(
+  async (state, config?) => {
+    return { result: "done" };
+  },
+  { displayName: "my_node" }
+);
 ```
 
 ### 3. Prompt 管理（DDD）⭐
@@ -264,7 +294,13 @@ import { MY_PROMPT } from "./prompts.js"; // 从本领域导入
 使用封装的 `createStructuredChain`：
 
 ```typescript
-const chain = createStructuredChain(PROMPT, Schema, LLMPresets.precise());
+import { createStructuredChain, LLMPresets } from "../../core/llm.js";
+
+const chain = createStructuredChain(
+  PROMPT,
+  Schema,
+  LLMPresets.deepseek()  // 或 LLMPresets.openai()
+);
 const result = await chain.invoke({ input: userInput });
 ```
 
